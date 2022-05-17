@@ -1,0 +1,45 @@
+!pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org pandas
+!pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org openpyxl
+
+import datetime
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup as bs
+
+search_str = "포스코"
+result = []
+start_no = -9
+base_url = "https://search.naver.com/search.naver?where=news&query="+search_str+"&sm=tab_opt&sort=0&photo=0&field=0&reporter_article=&pd=4&ds=&de=&docid=&nso=so%3Ar%2Cp%3A1d%2Ca%3Aall&mynews=0&refresh_start=0&related=0&start="
+now_date = datetime.datetime.now().strftime("%Y-%m-%d")
+ssl_verify = False
+if ssl_verify == False:
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+for i in range(1, 11):
+    print("네이버 뉴스 {}번째 페이지 크롤링중... (검색어 : {})".format(i, search_str), end="\r")
+    start_no = start_no + 10
+    url = base_url + str(i)
+    html = requests.get(url, verify = ssl_verify)
+    soup = bs(html.text, "html.parser")
+    news_arr = soup.select(".news_tit")
+    for news_title in news_arr:
+        this_result = {
+            "크롤링 날짜" : now_date,
+            "제목" : news_title.text,
+            "링크" : news_title.get("href")
+        }
+        result.append(this_result)
+df = pd.DataFrame(result)
+df.drop_duplicates("제목", inplace=True)
+df.reset_index(inplace=True)
+df.drop(["index"], axis=1, inplace=True)
+file_name = "../outputs/"+str(now_date)+"_네이버 뉴스 크롤링 결과_검색어 "+search_str+".xlsx"
+df.to_excel(
+    file_name,
+    header = True,
+    index = False,
+    startrow = 0, 
+    startcol = 0
+)
+display(df)
+print("네이버 뉴스 크롤링 및 저장 완료")
+print("저장된 파일명 : "+file_name)
